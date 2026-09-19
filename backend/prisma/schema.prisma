@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  experienceLevel    String?
+  weeklyAvailability String?
+  learnerGoals       String?
+  consentGiven       Boolean  @default(false)
+  reviewerMode       Boolean  @default(false)
+  currentPage        String   @default("home")
+  selectedCode       String   @default("DB-00")
+  createdAt          DateTime @default(now())
+
+  records Record[]
+}
+
+model Record {
+  id               String   @id @default(uuid())
+  userId           Int
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordType       String
+  unitCode         String?
+  missionId        String?
+  missionKind      String?
+  loopStage        String?
+  status           String?
+  submissionText   String?
+  reviewerComment  String?
+  checkpointNotes  String?
+  toolName         String?
+  toolCategory     String?
+  toolUrl          String?
+  toolNote         String?
+  savedPromptText  String?
+  createdAt        DateTime @default(now())
+
+  @@index([userId])
+}
