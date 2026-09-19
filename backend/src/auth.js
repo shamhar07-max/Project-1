@@ -8,18 +8,27 @@ function signToken(userId) {
   return jwt.sign({ sub: userId }, JWT_SECRET, { expiresIn: TOKEN_TTL });
 }
 
+// In production the frontend is typically served from a different origin than
+// this API (e.g. separate static host + API host), so the cookie must be
+// SameSite=None to be sent on cross-origin fetch requests at all — SameSite=Lax
+// is silently dropped on cross-site XHR/fetch (only same-site or top-level GET
+// navigations still get it). SameSite=None requires Secure, which is fine once
+// the API is served over HTTPS, as it should be in production.
+const isProduction = process.env.NODE_ENV === "production";
+const cookieOptions = {
+  httpOnly: true,
+  sameSite: isProduction ? "none" : "lax",
+  secure: isProduction,
+  maxAge: 30 * 24 * 60 * 60 * 1000
+};
+
 function setAuthCookie(res, userId) {
   const token = signToken(userId);
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 30 * 24 * 60 * 60 * 1000
-  });
+  res.cookie(COOKIE_NAME, token, cookieOptions);
 }
 
 function clearAuthCookie(res) {
-  res.clearCookie(COOKIE_NAME);
+  res.clearCookie(COOKIE_NAME, cookieOptions);
 }
 
 function requireAuth(req, res, next) {

@@ -15,7 +15,7 @@ function stagesFor(records, code) {
 function statusFor(records, code) {
   const relevant = eventsFor(records, code)
     .filter((r) => ["submission", "review", "verification"].includes(r.recordType))
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt) || b.id - a.id);
   return relevant.length ? relevant[0].status || "Draft" : "Draft";
 }
 

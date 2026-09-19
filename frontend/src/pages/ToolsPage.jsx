@@ -14,12 +14,12 @@ export default function ToolsPage() {
     toast("Opened in a new tab. Your workspace remains here.");
   }
 
-  async function useOrSave(tool, save) {
+  async function copyToolPrompt(tool, save) {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(tool.prompt);
       }
-    } catch (e) {
+    } catch {
       /* clipboard may be blocked */
     }
     await api.toolUse({
@@ -72,14 +72,14 @@ export default function ToolsPage() {
                 <button
                   className="focus-ring rounded-lg border border-teal px-3 py-2 text-sm font-bold text-teal"
                   type="button"
-                  onClick={() => useOrSave(tool, false)}
+                  onClick={() => copyToolPrompt(tool, false)}
                 >
                   Use for this task
                 </button>
                 <button
                   className="focus-ring rounded-lg border border-line px-3 py-2 text-sm font-bold"
                   type="button"
-                  onClick={() => useOrSave(tool, true)}
+                  onClick={() => copyToolPrompt(tool, true)}
                 >
                   Save prompt
                 </button>

@@ -1,5 +1,6 @@
 require("dotenv").config();
 const express = require("express");
+require("express-async-errors");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 
@@ -25,6 +26,9 @@ app.use("/api", catalogueRoutes);
 app.use("/api/records", recordsRoutes);
 
 app.use((err, req, res, next) => {
+  if (err && err.code === "P2002") {
+    return res.status(409).json({ error: "An account with this email already exists. Try signing in instead." });
+  }
   console.error(err);
   res.status(500).json({ error: "Something went wrong on the server." });
 });

@@ -72,6 +72,14 @@ cd frontend && npm run build   # outputs frontend/dist — serve behind any stat
 cd backend && npm start        # run the API behind a reverse proxy; set CLIENT_ORIGIN
 ```
 
+Set `NODE_ENV=production` on the backend for a real deployment. This does two things: it marks
+the auth cookie `Secure` (HTTPS-only), and it switches it to `SameSite=None` — required because
+`SameSite=Lax` cookies are silently dropped on cross-origin `fetch`/XHR requests, and in
+production the frontend is almost always served from a different origin than the API (e.g. a
+static host + a separate API host) rather than through Vite's dev-only same-origin proxy. Set
+`CLIENT_ORIGIN` to the exact origin (scheme + host) the frontend is deployed at — CORS with
+credentials requires an exact match, not a wildcard.
+
 ## How the app works
 
 - **Demo / Guest** creates a brand-new, isolated account instantly — no form to fill in.

@@ -11,7 +11,7 @@ async function request(path, options = {}) {
   let data = null;
   try {
     data = await res.json();
-  } catch (e) {
+  } catch {
     data = null;
   }
 

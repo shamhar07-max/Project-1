@@ -15,7 +15,7 @@ const {
 const router = express.Router();
 
 async function loadRecords(userId) {
-  return prisma.record.findMany({ where: { userId }, orderBy: { createdAt: "asc" } });
+  return prisma.record.findMany({ where: { userId }, orderBy: [{ createdAt: "asc" }, { id: "asc" }] });
 }
 
 function evidenceRecordTypes() {
@@ -33,7 +33,7 @@ router.get("/", async (req, res) => {
   const records = await loadRecords(req.userId);
   const evidence = records
     .filter((r) => evidenceRecordTypes().includes(r.recordType))
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt) || b.id - a.id);
   res.json({ records: evidence });
 });
 
