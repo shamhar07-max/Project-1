@@ -7,42 +7,55 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// role is server-controlled only — see routes/admin.js. Never settable by the
+// account it belongs to; only an existing admin can change another user's role.
 model User {
   id                 Int      @id @default(autoincrement())
   name               String
   email              String   @unique
   passwordHash       String
+  role               String   @default("learner")
   experienceLevel    String?
   weeklyAvailability String?
   learnerGoals       String?
+  audience           String?
   consentGiven       Boolean  @default(false)
-  reviewerMode       Boolean  @default(false)
-  currentPage        String   @default("home")
-  selectedCode       String   @default("DB-00")
   createdAt          DateTime @default(now())
 
-  records Record[]
+  records      Record[] @relation("LearnerRecords")
+  actedRecords Record[] @relation("ActorRecords")
 }
 
 model Record {
-  id               Int      @id @default(autoincrement())
-  userId           Int
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recordType       String
-  unitCode         String?
-  missionId        String?
-  missionKind      String?
-  loopStage        String?
-  status           String?
-  submissionText   String?
-  reviewerComment  String?
-  checkpointNotes  String?
-  toolName         String?
-  toolCategory     String?
-  toolUrl          String?
-  toolNote         String?
-  savedPromptText  String?
-  createdAt        DateTime @default(now())
+  id     Int  @id @default(autoincrement())
+  userId Int
+  user   User @relation("LearnerRecords", fields: [userId], references: [id], onDelete: Cascade)
+
+  // Who performed a staff action (review/verify) on this learner's record —
+  // distinct from userId, the learner the record is about. Null for records
+  // the learner created themselves (enrolment, checkpoint, draft, submission).
+  actedByUserId Int?
+  actedBy       User? @relation("ActorRecords", fields: [actedByUserId], references: [id], onDelete: SetNull)
+
+  recordType      String
+  unitCode        String?
+  missionId       String?
+  missionKind     String?
+  loopStage       String?
+  status          String?
+  submissionText  String?
+  reviewerComment String?
+  checkpointNotes String?
+  toolName        String?
+  toolCategory    String?
+  toolUrl         String?
+  toolNote        String?
+  savedPromptText String?
+  bundleId        String?
+  score           Int?
+  passed          Boolean?
+  createdAt       DateTime @default(now())
 
   @@index([userId])
+  @@index([actedByUserId])
 }

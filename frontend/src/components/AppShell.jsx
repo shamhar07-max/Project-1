@@ -1,27 +1,61 @@
 import { NavLink, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
-import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
 import { useAppData } from "../context/AppDataContext";
 import { useToast } from "../context/ToastContext";
 
 function activeCourseCode(progress) {
-  const active =
-    progress.find((c) => c.enrolled && !c.complete) ||
-    progress.find((c) => !c.locked) ||
-    progress[0];
+  const active = progress.find((c) => c.enrolled && !c.complete) || progress.find((c) => c.state === "Available") || progress[0];
   return active ? active.code : "DB-00";
 }
 
+const LEARNER_NAV = (taskCode) => [
+  { to: "/app/home", label: "Home" },
+  { to: "/app/learning", label: "My Learning" },
+  { to: "/app/catalogue", label: "Catalogue" },
+  { to: "/app/bundles", label: "Bundles" },
+  { to: "/app/task/" + taskCode, label: "Task Workspace", matchPrefix: "/app/task" },
+  { to: "/app/diagnostic", label: "Diagnostic" },
+  { to: "/app/tools", label: "Tool Library" },
+  { to: "/app/evidence", label: "Evidence" },
+  { to: "/app/record", label: "Capability Record" },
+  { to: "/app/billing", label: "Billing" },
+  { to: "/app/support", label: "Support" },
+  { to: "/app/profile", label: "Profile" }
+];
+
+const STAFF_NAV = {
+  reviewer: [
+    { to: "/app/home", label: "Home" },
+    { to: "/app/review-queue", label: "Review Queue" },
+    { to: "/app/profile", label: "Profile" }
+  ],
+  verifier: [
+    { to: "/app/home", label: "Home" },
+    { to: "/app/verify-queue", label: "Verify Queue" },
+    { to: "/app/profile", label: "Profile" }
+  ],
+  admin: [
+    { to: "/app/home", label: "Home" },
+    { to: "/app/review-queue", label: "Review Queue" },
+    { to: "/app/verify-queue", label: "Verify Queue" },
+    { to: "/app/admin/users", label: "Users & Roles" },
+    { to: "/app/admin/curriculum-health", label: "Curriculum Health" },
+    { to: "/app/admin/rollout", label: "Release & Rollout" },
+    { to: "/app/profile", label: "Profile" }
+  ]
+};
+
 function breadcrumbFor(pathname, selectedCode) {
   if (pathname.startsWith("/app/task")) return "My Learning / " + (selectedCode || "") + " / Task Workspace";
-  if (pathname.startsWith("/app/catalogue")) return "Home / Course Catalogue";
+  if (pathname.startsWith("/app/catalogue")) return "Home / Catalogue";
+  if (pathname.startsWith("/app/admin")) return "Admin / " + pathname.split("/").pop().replace(/-/g, " ");
   const last = pathname.split("/").filter(Boolean).pop() || "home";
-  return last.charAt(0).toUpperCase() + last.slice(1);
+  return last.charAt(0).toUpperCase() + last.slice(1).replace(/-/g, " ");
 }
 
 export default function AppShell() {
-  const { user, setUser, signout } = useAuth();
+  const { user, signout } = useAuth();
   const { progress } = useAppData();
   const toast = useToast();
   const navigate = useNavigate();
@@ -29,30 +63,15 @@ export default function AppShell() {
   const params = useParams();
   const selectedCode = params.code;
 
-  const navItems = [
-    { to: "/app/home", label: "Home" },
-    { to: "/app/learning", label: "My Learning" },
-    { to: "/app/catalogue", label: "Course Catalogue" },
-    { to: "/app/task/" + activeCourseCode(progress), label: "Task Workspace", matchPrefix: "/app/task" },
-    { to: "/app/tools", label: "Tool Library" },
-    { to: "/app/evidence", label: "Evidence" },
-    { to: "/app/record", label: "Capability Record" },
-    { to: "/app/profile", label: "Profile" }
-  ];
+  if (!user) return null;
 
-  async function toggleReviewer() {
-    const data = await api.setReviewerMode(!user.reviewerMode);
-    setUser(data.user);
-    toast(data.user.reviewerMode ? "Reviewer controls are visible." : "Learner-only workspace restored.");
-  }
+  const navItems = user.role === "learner" ? LEARNER_NAV(activeCourseCode(progress)) : STAFF_NAV[user.role] || LEARNER_NAV("DB-00");
 
   async function handleSignout() {
     await signout();
     toast("Signed out. Sign in again to restore your saved workspace.");
     navigate("/access");
   }
-
-  if (!user) return null;
 
   return (
     <div className="app-shell" style={{ minHeight: "100vh" }}>
@@ -73,16 +92,8 @@ export default function AppShell() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-mint px-3 py-1.5 text-xs font-bold text-teal">
-              {user.name} · learner workspace
+              {user.name} · {user.role}
             </span>
-            <button
-              className="focus-ring rounded-lg border border-teal px-3 py-2 text-xs font-bold text-teal"
-              type="button"
-              aria-pressed={user.reviewerMode}
-              onClick={toggleReviewer}
-            >
-              {user.reviewerMode ? "Reviewer demo on" : "Reviewer demo off"}
-            </button>
             <button
               className="focus-ring rounded-lg border border-line px-3 py-2 text-xs font-bold"
               type="button"
@@ -108,14 +119,6 @@ export default function AppShell() {
               </NavLink>
             );
           })}
-          {user.reviewerMode && (
-            <NavLink
-              to="/app/admin"
-              className={({ isActive }) => "nav-btn focus-ring rounded-xl px-3 py-2 text-sm font-bold" + (isActive ? " active" : "")}
-            >
-              Admin / Reviewer
-            </NavLink>
-          )}
         </nav>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-semibold text-muted">{breadcrumbFor(location.pathname, selectedCode)}</p>

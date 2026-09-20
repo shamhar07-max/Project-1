@@ -87,9 +87,14 @@ export default function TaskPage() {
 
   let blockNotice = null;
   if (blocked) {
-    const reason = !info.enrolled
-      ? "Enrol in this course before beginning this mission."
-      : "Issue evidence for " + course.prereq + " before beginning this mission.";
+    let reason;
+    if (info.state === "Locked") {
+      reason = course.prereq === "Foundation diagnostic" ? "Pass the Foundation Diagnostic before beginning this mission." : "Issue evidence for " + course.prereq + " before beginning this mission.";
+    } else if (["Planning", "Proposed", "Restricted"].includes(info.state)) {
+      reason = `This course is currently "${info.state}" and is not open for enrolment yet.`;
+    } else {
+      reason = "Enrol in this course before beginning this mission.";
+    }
     blockNotice = (
       <div className="mt-5 rounded-xl border border-[#edc5b9] bg-[#fff8f5] p-4 text-sm text-[#7f3828]">
         <b>Workspace locked.</b> {reason}
@@ -103,7 +108,7 @@ export default function TaskPage() {
         <div className="flex flex-wrap justify-between gap-4">
           <div>
             <p className="text-xs font-bold uppercase tracking-[.14em]" style={{ color: "#9fd9cf" }}>
-              {course.code} · {course.kind} mission · {course.level}
+              {course.code} · {course.missionKind} mission · {course.level}
             </p>
             <h1 className="serif mt-2 text-3xl font-semibold text-white">{course.title}</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6" style={{ color: "#d5e8e4" }}>

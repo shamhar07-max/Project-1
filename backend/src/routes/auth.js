@@ -2,21 +2,23 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const prisma = require("../db");
 const { setAuthCookie, clearAuthCookie, requireAuth } = require("../auth");
+const { AUDIENCES } = require("../data");
 
 const router = express.Router();
+
+const AUDIENCE_CODES = AUDIENCES.map((a) => a.code);
 
 function publicUser(user) {
   return {
     id: user.id,
     name: user.name,
     email: user.email,
+    role: user.role,
     experienceLevel: user.experienceLevel,
     weeklyAvailability: user.weeklyAvailability,
     learnerGoals: user.learnerGoals,
-    consentGiven: user.consentGiven,
-    reviewerMode: user.reviewerMode,
-    currentPage: user.currentPage,
-    selectedCode: user.selectedCode
+    audience: user.audience,
+    consentGiven: user.consentGiven
   };
 }
 
@@ -24,14 +26,17 @@ function isValidEmail(email) {
   return typeof email === "string" && /\S+@\S+\.\S+/.test(email);
 }
 
-// Full profile setup / registration (name, email, password, experience, availability, goals, consent)
+// Full profile setup / registration (name, email, password, experience, availability, audience, goals, consent)
 router.post("/setup", async (req, res) => {
-  const { name, email, password, experienceLevel, weeklyAvailability, learnerGoals, consent } = req.body || {};
+  const { name, email, password, experienceLevel, weeklyAvailability, audience, learnerGoals, consent } = req.body || {};
   const cleanEmail = String(email || "").trim().toLowerCase();
   const cleanName = String(name || "").trim();
 
-  if (!cleanName || !isValidEmail(cleanEmail) || !experienceLevel || !weeklyAvailability || !consent) {
+  if (!cleanName || !isValidEmail(cleanEmail) || !experienceLevel || !weeklyAvailability || !audience || !consent) {
     return res.status(400).json({ error: "Complete every field and confirm consent before continuing." });
+  }
+  if (!AUDIENCE_CODES.includes(audience)) {
+    return res.status(400).json({ error: "Choose a valid audience option." });
   }
   if (!password || String(password).length < 6) {
     return res.status(400).json({ error: "Choose a password with at least 6 characters." });
@@ -50,10 +55,9 @@ router.post("/setup", async (req, res) => {
       passwordHash,
       experienceLevel,
       weeklyAvailability,
+      audience,
       learnerGoals: String(learnerGoals || "").trim(),
-      consentGiven: true,
-      currentPage: "home",
-      selectedCode: "DB-00"
+      consentGiven: true
     }
   });
 
@@ -71,6 +75,8 @@ router.post("/setup", async (req, res) => {
 });
 
 // Sign in, or register on the fly if no account exists yet with this email.
+// New accounts always start as role "learner" — reviewer/verifier/admin can
+// only be granted afterward by an existing admin.
 router.post("/signin", async (req, res) => {
   const { email, password } = req.body || {};
   const cleanEmail = String(email || "").trim().toLowerCase();
@@ -99,9 +105,7 @@ router.post("/signin", async (req, res) => {
         experienceLevel: "New to digital work",
         weeklyAvailability: "4–6 hours",
         learnerGoals: "Build practical confidence",
-        consentGiven: true,
-        currentPage: "home",
-        selectedCode: "DB-00"
+        consentGiven: true
       }
     });
   }
@@ -110,7 +114,7 @@ router.post("/signin", async (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
-// Demo / Guest entry — creates a fresh, isolated demo account each time.
+// Demo / Guest entry — creates a fresh, isolated learner account each time.
 router.post("/demo", async (req, res) => {
   const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   const email = `guest-${suffix}@demo.digitalburj.local`;
@@ -123,9 +127,7 @@ router.post("/demo", async (req, res) => {
       experienceLevel: "New to digital work",
       weeklyAvailability: "4–6 hours",
       learnerGoals: "Build practical confidence",
-      consentGiven: true,
-      currentPage: "home",
-      selectedCode: "DB-00"
+      consentGiven: true
     }
   });
   setAuthCookie(res, user.id);
@@ -144,13 +146,11 @@ router.get("/me", requireAuth, async (req, res) => {
 });
 
 router.patch("/profile", requireAuth, async (req, res) => {
-  const { name, learnerGoals, weeklyAvailability, currentPage, selectedCode } = req.body || {};
+  const { name, learnerGoals, weeklyAvailability } = req.body || {};
   const data = {};
   if (typeof name === "string" && name.trim()) data.name = name.trim();
   if (typeof learnerGoals === "string") data.learnerGoals = learnerGoals.trim();
   if (typeof weeklyAvailability === "string" && weeklyAvailability.trim()) data.weeklyAvailability = weeklyAvailability.trim();
-  if (typeof currentPage === "string") data.currentPage = currentPage;
-  if (typeof selectedCode === "string") data.selectedCode = selectedCode;
 
   const user = await prisma.user.update({ where: { id: req.userId }, data });
 
@@ -165,15 +165,6 @@ router.patch("/profile", requireAuth, async (req, res) => {
     });
   }
 
-  res.json({ user: publicUser(user) });
-});
-
-router.patch("/reviewer-mode", requireAuth, async (req, res) => {
-  const { reviewerMode } = req.body || {};
-  const user = await prisma.user.update({
-    where: { id: req.userId },
-    data: { reviewerMode: !!reviewerMode }
-  });
   res.json({ user: publicUser(user) });
 });
 

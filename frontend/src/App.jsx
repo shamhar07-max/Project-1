@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import RoleRoute from "./components/RoleRoute";
 import AppShell from "./components/AppShell";
 import AccessPage from "./pages/AccessPage";
 import SetupPage from "./pages/SetupPage";
@@ -9,12 +10,20 @@ import OrientationPage from "./pages/OrientationPage";
 import HomePage from "./pages/HomePage";
 import LearningPage from "./pages/LearningPage";
 import CataloguePage from "./pages/CataloguePage";
+import BundlesPage from "./pages/BundlesPage";
+import DiagnosticPage from "./pages/DiagnosticPage";
 import TaskPage from "./pages/TaskPage";
 import ToolsPage from "./pages/ToolsPage";
 import EvidencePage from "./pages/EvidencePage";
 import RecordPage from "./pages/RecordPage";
+import BillingPage from "./pages/BillingPage";
+import SupportPage from "./pages/SupportPage";
 import ProfilePage from "./pages/ProfilePage";
-import AdminPage from "./pages/AdminPage";
+import ReviewQueuePage from "./pages/ReviewQueuePage";
+import VerifyQueuePage from "./pages/VerifyQueuePage";
+import AdminUsersPage from "./pages/admin/AdminUsersPage";
+import CurriculumHealthPage from "./pages/admin/CurriculumHealthPage";
+import RolloutPage from "./pages/admin/RolloutPage";
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -48,14 +57,33 @@ export default function App() {
       <Route path="/app" element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="home" element={<HomePage />} />
-          <Route path="learning" element={<LearningPage />} />
-          <Route path="catalogue" element={<CataloguePage />} />
-          <Route path="task/:code" element={<TaskPage />} />
-          <Route path="tools" element={<ToolsPage />} />
-          <Route path="evidence" element={<EvidencePage />} />
-          <Route path="record" element={<RecordPage />} />
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="admin" element={<AdminPage />} />
+
+          <Route element={<RoleRoute roles={["learner"]} />}>
+            <Route path="learning" element={<LearningPage />} />
+            <Route path="catalogue" element={<CataloguePage />} />
+            <Route path="bundles" element={<BundlesPage />} />
+            <Route path="diagnostic" element={<DiagnosticPage />} />
+            <Route path="task/:code" element={<TaskPage />} />
+            <Route path="tools" element={<ToolsPage />} />
+            <Route path="evidence" element={<EvidencePage />} />
+            <Route path="record" element={<RecordPage />} />
+            <Route path="billing" element={<BillingPage />} />
+            <Route path="support" element={<SupportPage />} />
+          </Route>
+
+          <Route element={<RoleRoute roles={["reviewer", "admin"]} />}>
+            <Route path="review-queue" element={<ReviewQueuePage />} />
+          </Route>
+          <Route element={<RoleRoute roles={["verifier", "admin"]} />}>
+            <Route path="verify-queue" element={<VerifyQueuePage />} />
+          </Route>
+          <Route element={<RoleRoute roles={["admin"]} />}>
+            <Route path="admin/users" element={<AdminUsersPage />} />
+            <Route path="admin/curriculum-health" element={<CurriculumHealthPage />} />
+            <Route path="admin/rollout" element={<RolloutPage />} />
+          </Route>
+
           <Route index element={<Navigate to="home" replace />} />
         </Route>
       </Route>

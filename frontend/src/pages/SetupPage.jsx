@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../context/AuthContext";
+import { useAppData } from "../context/AppDataContext";
 import { useToast } from "../context/ToastContext";
 
 export default function SetupPage() {
   const { setUser } = useAuth();
+  const { audiences } = useAppData();
   const toast = useToast();
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -14,6 +16,7 @@ export default function SetupPage() {
     password: "",
     experienceLevel: "",
     weeklyAvailability: "",
+    audience: "",
     goals: "",
     consent: false
   });
@@ -35,6 +38,7 @@ export default function SetupPage() {
         password: form.password,
         experienceLevel: form.experienceLevel,
         weeklyAvailability: form.weeklyAvailability,
+        audience: form.audience,
         learnerGoals: form.goals.trim(),
         consent: form.consent
       });
@@ -123,6 +127,20 @@ export default function SetupPage() {
             <option>4–6 hours</option>
             <option>7+ hours</option>
           </select>
+        </div>
+        <div className="md:col-span-2">
+          <label className="mb-2 block text-sm font-bold" htmlFor="audience">
+            Which best describes you?
+          </label>
+          <select id="audience" className="field" value={form.audience} onChange={(e) => set("audience", e.target.value)}>
+            <option value="">Choose one</option>
+            {audiences.map((a) => (
+              <option key={a.code} value={a.code}>
+                {a.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-muted">This drives the recommended first step on your Home dashboard.</p>
         </div>
         <div className="md:col-span-2">
           <label className="mb-2 block text-sm font-bold" htmlFor="goals">

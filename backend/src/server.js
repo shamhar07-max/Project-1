@@ -7,6 +7,11 @@ const cookieParser = require("cookie-parser");
 const authRoutes = require("./routes/auth");
 const catalogueRoutes = require("./routes/catalogue");
 const recordsRoutes = require("./routes/records");
+const adminRoutes = require("./routes/admin");
+const diagnosticRoutes = require("./routes/diagnostic");
+const bundlesRoutes = require("./routes/bundles");
+const queueRoutes = require("./routes/queues");
+const { seedDemoStaff } = require("./seedDemoStaff");
 
 const app = express();
 
@@ -24,6 +29,10 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api", catalogueRoutes);
 app.use("/api/records", recordsRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/diagnostic", diagnosticRoutes);
+app.use("/api/bundles", bundlesRoutes);
+app.use("/api/queues", queueRoutes);
 
 app.use((err, req, res, next) => {
   if (err && err.code === "P2002") {
@@ -34,6 +43,10 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`DigitalBurj Academy API listening on port ${PORT}`);
-});
+seedDemoStaff()
+  .catch((err) => console.error("Failed to seed demo staff accounts:", err))
+  .finally(() => {
+    app.listen(PORT, () => {
+      console.log(`DigitalBurj Academy API listening on port ${PORT}`);
+    });
+  });

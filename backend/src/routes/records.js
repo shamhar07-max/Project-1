@@ -1,16 +1,8 @@
 const express = require("express");
 const prisma = require("../db");
 const { requireAuth } = require("../auth");
-const { courseByCode, LOOP, STAGE_HELP } = require("../data");
-const {
-  stagesFor,
-  statusFor,
-  isEnrolled,
-  isLocked,
-  isComplete,
-  nextStage,
-  summarizeAll
-} = require("../progress");
+const { courseByCode, STAGES } = require("../data");
+const { stagesFor, statusFor, isEnrolled, isLocked, courseState, nextStage, summarizeAll } = require("../progress");
 
 const router = express.Router();
 
@@ -19,7 +11,7 @@ async function loadRecords(userId) {
 }
 
 function evidenceRecordTypes() {
-  return ["failure", "review", "submission", "verification", "checkpoint", "draft", "tool_use"];
+  return ["failure", "review", "submission", "verification", "checkpoint", "draft", "tool_use", "diagnostic"];
 }
 
 router.use(requireAuth);
@@ -43,11 +35,18 @@ router.post("/enrol", async (req, res) => {
   if (!course) return res.status(404).json({ error: "Unknown course." });
 
   const records = await loadRecords(req.userId);
-  if (isLocked(records, code)) {
-    return res.status(409).json({ error: "This course remains locked until prerequisite evidence is issued." });
-  }
-  if (isEnrolled(records, code)) {
+  const state = courseState(records, code);
+  if (state === "Enrolled" || state === "Completed") {
     return res.json({ alreadyEnrolled: true });
+  }
+  if (state !== "Available") {
+    const reason =
+      state === "Locked"
+        ? course.prereq === "Foundation diagnostic"
+          ? "Pass the Foundation Diagnostic before enrolling in this course."
+          : "This course remains locked until prerequisite evidence is issued for " + course.prereq + "."
+        : `This course is currently "${state}" and is not open for enrolment.`;
+    return res.status(409).json({ error: reason });
   }
 
   await prisma.record.create({
@@ -56,13 +55,11 @@ router.post("/enrol", async (req, res) => {
       recordType: "enrolment",
       unitCode: course.code,
       missionId: course.missionId,
-      missionKind: course.kind,
+      missionKind: course.missionKind,
       status: "Enrolled",
       submissionText: "Learner enrolled in " + course.code
     }
   });
-
-  await prisma.user.update({ where: { id: req.userId }, data: { selectedCode: course.code } });
 
   const updated = await loadRecords(req.userId);
   res.status(201).json({ progress: summarizeAll(updated) });
@@ -134,13 +131,13 @@ router.post("/submit", async (req, res) => {
     return res.status(409).json({ error: "Workspace locked. Enrol and clear prerequisites first." });
   }
   const currentStatus = statusFor(records, code);
-  if (["Approved", "Pending Verification", "Verified", "Evidence Issued"].includes(currentStatus)) {
-    return res.status(409).json({ error: "This mission has already been submitted for review." });
+  if (!["Draft", "Request Changes"].includes(currentStatus)) {
+    return res.status(409).json({ error: "This mission is already " + currentStatus.toLowerCase() + " — nothing to submit right now." });
   }
 
   const missing = [];
   const done = stagesFor(records, code).size;
-  if (done < LOOP.length) missing.push(LOOP.length - done + " task checkpoints");
+  if (done < STAGES.length) missing.push(STAGES.length - done + " task checkpoints");
   const hasDraft = records.some((r) => r.unitCode === code && r.recordType === "draft");
   if (!hasDraft) missing.push("saved work or evidence");
   const allChecked = Array.isArray(confirmations) && confirmations.length === 3 && confirmations.every(Boolean);
@@ -152,59 +149,24 @@ router.post("/submit", async (req, res) => {
     return res.status(400).json({ error: "Submission blocked: add " + missing.join(", ") + "." });
   }
 
+  // A resubmission after Request Changes is tracked distinctly from a first
+  // submission, per the PDF's canonical lifecycle, so the audit trail shows
+  // whether a correction cycle happened.
+  const nextStatus = currentStatus === "Request Changes" ? "Resubmitted" : "Submitted";
+
   await prisma.record.create({
     data: {
       userId: req.userId,
       recordType: "submission",
       unitCode: course.code,
       missionId: course.missionId,
-      status: "Submitted",
+      status: nextStatus,
       submissionText: cleanText
     }
   });
 
   const updated = await loadRecords(req.userId);
-  res.status(201).json({ progress: summarizeAll(updated) });
-});
-
-const REVIEW_TRANSITIONS = {
-  Submitted: "In Review",
-  "In Review": ["Request Changes", "Approved"],
-  Approved: "Pending Verification",
-  "Pending Verification": "Verified",
-  Verified: "Evidence Issued"
-};
-
-router.post("/review", async (req, res) => {
-  const { code, status: nextStatus } = req.body || {};
-  const course = courseByCode(code);
-  if (!course) return res.status(404).json({ error: "Unknown course." });
-
-  const records = await loadRecords(req.userId);
-  const current = statusFor(records, code);
-  const allowed = REVIEW_TRANSITIONS[current];
-  const isAllowed = Array.isArray(allowed) ? allowed.includes(nextStatus) : allowed === nextStatus;
-  if (!isAllowed) {
-    return res.status(409).json({ error: "That review action is not available from the current status." });
-  }
-
-  const isVerification = ["Verified", "Evidence Issued"].includes(nextStatus);
-  await prisma.record.create({
-    data: {
-      userId: req.userId,
-      recordType: isVerification ? "verification" : "review",
-      unitCode: course.code,
-      missionId: course.missionId,
-      status: nextStatus,
-      reviewerComment:
-        nextStatus === "Request Changes"
-          ? "Please add clearer failure-case evidence and resubmit."
-          : "Demo reviewer action recorded."
-    }
-  });
-
-  const updated = await loadRecords(req.userId);
-  res.status(201).json({ progress: summarizeAll(updated) });
+  res.status(201).json({ status: nextStatus, progress: summarizeAll(updated) });
 });
 
 router.post("/tool-use", async (req, res) => {

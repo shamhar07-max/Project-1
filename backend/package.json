@@ -8,7 +8,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "prisma:migrate": "prisma migrate deploy",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "validate:curriculum": "node scripts/validate-curriculum.js"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
