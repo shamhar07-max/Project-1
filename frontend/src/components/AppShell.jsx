@@ -101,6 +101,13 @@ export default function AppShell() {
             >
               Sign out
             </button>
+            <a
+              className="focus-ring rounded-lg border border-line px-3 py-2 text-xs font-bold"
+              href="https://digitalburj.com"
+              title="Back to the DigitalBurj corporate site"
+            >
+              ← DigitalBurj HQ
+            </a>
           </div>
         </div>
       </header>

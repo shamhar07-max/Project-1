@@ -52,7 +52,15 @@ export default function AccessPage() {
     <section className="card overflow-hidden rounded-[2rem] bg-white">
       <div className="grid md:grid-cols-[1.05fr_.95fr]">
         <div className="bg-navy p-7 text-white md:p-10">
-          <p className="text-xs font-bold uppercase tracking-[.15em]" style={{ color: "#9fd9cf" }}>
+          <a
+            href="https://digitalburj.com"
+            className="focus-ring inline-flex items-center gap-1 rounded-lg text-xs font-bold uppercase tracking-[.15em] hover:text-white"
+            style={{ color: "#9fd9cf" }}
+            title="Back to the DigitalBurj corporate site"
+          >
+            ← DigitalBurj HQ
+          </a>
+          <p className="mt-4 text-xs font-bold uppercase tracking-[.15em]" style={{ color: "#9fd9cf" }}>
             Practical capability academy
           </p>
           <h1 className="serif mt-3 max-w-xl font-semibold leading-tight text-white" style={{ fontSize: 32 }}>
